@@ -1,0 +1,238 @@
+# Blockchain Options Transfer System - Cursor Rules
+
+## Project Context
+You are building a NestJS-based blockchain system for transferring financial options between banks. Follow these rules strictly.
+
+## Technology Stack
+- **Framework**: NestJS with TypeScript
+- **Database**: PostgreSQL with TypeORM
+- **Blockchain**: Ethereum/Polygon with ethers.js
+- **Package Manager**: pnpm (never use npm or yarn)
+- **Authentication**: JWT with Passport
+- **Validation**: class-validator and class-transformer
+- **Documentation**: Swagger/OpenAPI
+
+## Code Standards
+
+### General TypeScript Rules
+- Use strict TypeScript configuration
+- Always use explicit return types for functions
+- Prefer `interface` over `type` for object shapes
+- Use `const assertions` for immutable data
+- Never use `any` type - use `unknown` if needed
+
+### NestJS Patterns
+- Always use dependency injection with constructors
+- Use `@Injectable()` decorator for all services
+- Create separate modules for each domain (auth, options, banks, etc.)
+- Use guards for authentication and authorization
+- Use interceptors for logging and transformation
+- Use pipes for validation and transformation
+
+### File Naming Conventions
+- Controllers: `*.controller.ts`
+- Services: `*.service.ts`
+- Modules: `*.module.ts`
+- DTOs: `*.dto.ts`
+- Entities: `*.entity.ts`
+- Guards: `*.guard.ts`
+- Decorators: `*.decorator.ts`
+
+### Code Organization
+```typescript
+// Always structure services like this:
+@Injectable()
+export class ExampleService {
+  constructor(
+    @InjectRepository(Entity) private readonly repository: Repository<Entity>,
+    private readonly otherService: OtherService,
+  ) {}
+
+  async methodName(): Promise<ReturnType> {
+    // Implementation
+  }
+}
+```
+
+### Database Rules (TypeORM)
+- Use UUID primary keys for all entities
+- Always use `@CreateDateColumn()` and `@UpdateDateColumn()`
+- Use proper column types: `decimal` for money, `timestamp` for dates
+- Create proper relationships with foreign keys
+- Use migrations for schema changes
+- Always use transactions for multi-step operations
+
+### Entity Example Pattern
+```typescript
+@Entity('table_name')
+export class EntityName {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  name: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+```
+
+### DTO Patterns
+```typescript
+// Always use class-validator decorators
+export class CreateSomethingDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @Min(0)
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+```
+
+### Controller Patterns
+```typescript
+@Controller('endpoint')
+@UseGuards(JwtAuthGuard)
+@ApiTags('Endpoint')
+export class ExampleController {
+  constructor(private readonly service: ExampleService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create something' })
+  @ApiResponse({ status: 201, description: 'Created successfully' })
+  async create(@Body() dto: CreateDto): Promise<ResponseDto> {
+    return this.service.create(dto);
+  }
+}
+```
+
+## Blockchain Integration Rules
+
+### Ethers.js Patterns
+- Always use providers, never direct RPC calls
+- Implement proper error handling for blockchain operations
+- Use gas estimation before transactions
+- Always wait for transaction confirmations
+- Log all blockchain interactions
+
+### Smart Contract Integration
+```typescript
+@Injectable()
+export class BlockchainService {
+  private contract: Contract;
+  private provider: JsonRpcProvider;
+
+  constructor() {
+    this.provider = new JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
+    this.contract = new Contract(address, abi, this.provider);
+  }
+
+  async executeTransaction(method: string, params: any[]): Promise<TransactionResponse> {
+    const gasEstimate = await this.contract[method].estimateGas(...params);
+    const tx = await this.contract[method](...params, { gasLimit: gasEstimate });
+    return tx.wait();
+  }
+}
+```
+
+## Security Rules
+- Never log sensitive data (private keys, passwords)
+- Always validate input data with DTOs
+- Use guards for route protection
+- Implement rate limiting on all endpoints
+- Hash passwords with bcrypt (min 12 rounds)
+- Use helmet for security headers
+- Validate all blockchain addresses and amounts
+
+## Error Handling
+- Use custom exception classes extending NestJS exceptions
+- Always provide meaningful error messages
+- Log errors with appropriate context
+- Never expose internal errors to API responses
+
+### Custom Exception Pattern
+```typescript
+export class CustomBusinessException extends BadRequestException {
+  constructor(message: string) {
+    super({
+      message,
+      error: 'Custom Business Error',
+      statusCode: 400,
+    });
+  }
+}
+```
+
+## Environment Configuration
+- Use @nestjs/config for environment variables
+- Validate all environment variables on startup
+- Use different configs for different environments
+- Never commit sensitive environment variables
+
+## Testing Requirements
+- Write unit tests for all services
+- Write integration tests for controllers
+- Mock external dependencies (blockchain, database)
+- Test error scenarios
+- Aim for >80% code coverage
+
+## Database Migration Rules
+- Always create migrations for schema changes
+- Never modify existing migrations
+- Use descriptive migration names with timestamps
+- Include both up and down migrations
+- Test migrations on staging before production
+
+## API Documentation
+- Use Swagger decorators on all endpoints
+- Provide example requests and responses
+- Document all possible error responses
+- Include authentication requirements
+- Use proper HTTP status codes
+
+## Blockchain Specific Rules
+- Always validate blockchain addresses
+- Implement proper gas fee handling
+- Use proper decimal precision for financial amounts
+- Log all blockchain transactions with details
+- Implement transaction retry logic for failed transactions
+- Monitor blockchain events for confirmation
+
+## Audit Logging
+- Log all user actions
+- Log all database changes
+- Log all blockchain transactions
+- Include user context in all logs
+- Use structured logging (JSON format)
+
+## Performance Rules
+- Use database indexes appropriately
+- Implement pagination for list endpoints
+- Use connection pooling for database
+- Cache frequently accessed data
+- Optimize blockchain calls (batch when possible)
+
+## Module Structure
+Each module should have:
+- Controller (API endpoints)
+- Service (business logic)
+- Repository/Entity (data layer)
+- DTOs (data transfer objects)
+- Module file (dependency injection)
+
+## Import Rules
+- Group imports: Node modules, NestJS, local files
+- Use barrel exports for cleaner imports
+- Never use relative imports for cross-module dependencies
+- Use absolute imports with path mapping
+
+Remember: This is a financial system handling bank transactions. Security, accuracy, and audit trails are critical. Always err on the side of caution.

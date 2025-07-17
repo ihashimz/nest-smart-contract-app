@@ -1,0 +1,226 @@
+# Blockchain Options Transfer System
+
+A NestJS-based system for transferring financial options between banks using blockchain technology.
+
+## 🚀 Quick Start
+
+```bash
+# Install dependencies
+pnpm install
+
+# Set up environment
+cp .env.example .env
+
+# Run database migrations
+pnpm run migration:run
+
+# Start development server
+pnpm run start:dev
+```
+
+## 📋 Project Requirements
+
+### Core Dependencies
+```json
+{
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/typeorm": "^10.0.0",
+    "@nestjs/config": "^3.0.0",
+    "@nestjs/jwt": "^10.0.0",
+    "@nestjs/passport": "^10.0.0",
+    "@nestjs/swagger": "^7.0.0",
+    "typeorm": "^0.3.0",
+    "pg": "^8.11.0",
+    "ethers": "^6.0.0",
+    "class-validator": "^0.14.0",
+    "class-transformer": "^0.5.0",
+    "bcrypt": "^5.1.0",
+    "helmet": "^7.0.0"
+  }
+}
+```
+
+## 🏗️ Project Structure
+
+```
+src/
+├── auth/
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── auth.module.ts
+│   ├── dto/
+│   │   ├── login.dto.ts
+│   │   └── register.dto.ts
+│   └── guards/
+│       ├── jwt-auth.guard.ts
+│       └── roles.guard.ts
+├── blockchain/
+│   ├── blockchain.service.ts
+│   ├── blockchain.module.ts
+│   ├── contracts/
+│   │   └── options-contract.service.ts
+│   └── dto/
+│       └── blockchain-transaction.dto.ts
+├── options/
+│   ├── options.controller.ts
+│   ├── options.service.ts
+│   ├── options.module.ts
+│   ├── entities/
+│   │   ├── option.entity.ts
+│   │   └── option-transfer.entity.ts
+│   └── dto/
+│       ├── create-option.dto.ts
+│       ├── transfer-option.dto.ts
+│       └── option-response.dto.ts
+├── banks/
+│   ├── banks.controller.ts
+│   ├── banks.service.ts
+│   ├── banks.module.ts
+│   ├── entities/
+│   │   └── bank.entity.ts
+│   └── dto/
+│       └── bank.dto.ts
+├── audit/
+│   ├── audit.service.ts
+│   ├── audit.module.ts
+│   └── entities/
+│       └── audit-log.entity.ts
+├── common/
+│   ├── decorators/
+│   │   └── roles.decorator.ts
+│   ├── filters/
+│   │   └── http-exception.filter.ts
+│   ├── interceptors/
+│   │   └── logging.interceptor.ts
+│   └── pipes/
+│       └── validation.pipe.ts
+├── config/
+│   ├── database.config.ts
+│   ├── blockchain.config.ts
+│   └── app.config.ts
+└── main.ts
+```
+
+## 🔐 Authentication & Authorization
+
+- JWT-based authentication for banks
+- Role-based access control (BANK_ADMIN, TRADER, COMPLIANCE)
+- Bank-specific user isolation
+
+## 📊 Core Entities
+
+### Option Entity Structure
+```typescript
+@Entity('options')
+export class Option {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  symbol: string; // e.g., "AAPL-CALL-150-2024-12-15"
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  strikePrice: number;
+
+  @Column()
+  expirationDate: Date;
+
+  @Column({ type: 'enum', enum: ['CALL', 'PUT'] })
+  optionType: string;
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  premium: number;
+
+  @Column('decimal', { precision: 18, scale: 8 })
+  quantity: number;
+
+  @ManyToOne(() => Bank)
+  currentOwner: Bank;
+
+  @Column()
+  blockchainAddress: string;
+
+  @Column()
+  tokenId: string;
+
+  @Column({ type: 'enum', enum: ['ACTIVE', 'TRANSFERRED', 'EXPIRED'] })
+  status: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+}
+```
+
+## 🔗 Blockchain Integration
+
+- Ethers.js integration for Ethereum/Polygon
+- Smart contract interaction for option transfers
+- Gas fee estimation and management
+- Transaction monitoring and confirmations
+
+## 🛠️ API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/login` | Bank user authentication |
+| POST | `/auth/register` | Register new bank user |
+| GET | `/options` | List options for authenticated bank |
+| POST | `/options` | Create new option |
+| POST | `/options/:id/transfer` | Transfer option to another bank |
+| GET | `/options/:id/history` | Get transfer history |
+| GET | `/banks` | List all registered banks |
+| POST | `/audit/logs` | Query audit logs |
+| GET | `/blockchain/transaction/:hash` | Get transaction status |
+
+## ⚙️ Environment Configuration
+
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/options_db
+
+# Authentication
+JWT_SECRET=your-secret-key
+
+# Blockchain
+BLOCKCHAIN_RPC_URL=https://polygon-rpc.com
+PRIVATE_KEY=your-wallet-private-key
+CONTRACT_ADDRESS=deployed-contract-address
+
+# Application
+PORT=3000
+NODE_ENV=development
+```
+
+## 🔒 Security Features
+
+- Helmet for security headers
+- Rate limiting
+- CORS configuration
+- Input sanitization
+- Comprehensive audit logging
+
+## 📚 Additional Features
+
+- Swagger UI at `/api/docs`
+- Health check endpoint
+- Request/response logging middleware
+- Database migrations
+- Unit and integration tests
+- Docker containerization
+
+## 🚦 Development Workflow
+
+1. **Phase 1**: Basic project setup, authentication, database
+2. **Phase 2**: Blockchain integration and smart contracts
+3. **Phase 3**: Option transfer logic and validation
+4. **Phase 4**: Audit logging and compliance features
+5. **Phase 5**: Testing and deployment
+
+## 📖 Documentation
+
+- API documentation available at `/api/docs`
+- Smart contract ABIs in `/contracts` directory
+- Database schema in migration files
