@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Bank } from './entities/bank.entity';
@@ -22,25 +26,30 @@ export class BanksService {
     });
 
     if (existingBank) {
-      throw new ConflictException('Bank with this name or blockchain address already exists');
+      throw new ConflictException(
+        'Bank with this name or blockchain address already exists',
+      );
     }
 
     const bank = this.bankRepository.create(createBankDto);
     const savedBank = await this.bankRepository.save(bank);
-    
+
     return this.mapToResponseDto(savedBank);
   }
 
-  async findAll(): Promise<BankResponseDto[]> {
+  async findAll(bankId: string): Promise<BankResponseDto[]> {
     const banks = await this.bankRepository.find({
-      where: { isActive: true },
+      where: { id: bankId, isActive: true },
       order: { name: 'ASC' },
     });
-    
-    return banks.map(bank => this.mapToResponseDto(bank));
+
+    return banks.map((bank) => this.mapToResponseDto(bank));
   }
 
-  async findOne(id: string): Promise<BankResponseDto> {
+  async findOne(id: string, bankId?: string): Promise<BankResponseDto> {
+    if (bankId && id !== bankId) {
+      throw new NotFoundException('Bank not found');
+    }
     const bank = await this.bankRepository.findOne({
       where: { id, isActive: true },
     });
@@ -52,19 +61,31 @@ export class BanksService {
     return this.mapToResponseDto(bank);
   }
 
-  async findByBlockchainAddress(address: string): Promise<BankResponseDto> {
+  async findByBlockchainAddress(
+    address: string,
+    bankId: string,
+  ): Promise<BankResponseDto> {
     const bank = await this.bankRepository.findOne({
-      where: { blockchainAddress: address, isActive: true },
+      where: { id: bankId, blockchainAddress: address, isActive: true },
     });
 
     if (!bank) {
-      throw new NotFoundException(`Bank with blockchain address ${address} not found`);
+      throw new NotFoundException(
+        `Bank with blockchain address ${address} not found`,
+      );
     }
 
     return this.mapToResponseDto(bank);
   }
 
-  async update(id: string, updateBankDto: UpdateBankDto): Promise<BankResponseDto> {
+  async update(
+    id: string,
+    updateBankDto: UpdateBankDto,
+    bankId: string,
+  ): Promise<BankResponseDto> {
+    if (id !== bankId) {
+      throw new NotFoundException('Bank not found');
+    }
     const bank = await this.bankRepository.findOne({
       where: { id, isActive: true },
     });
@@ -78,22 +99,31 @@ export class BanksService {
       const existingBank = await this.bankRepository.findOne({
         where: [
           { name: updateBankDto.name || bank.name, id: Not(id) },
-          { blockchainAddress: updateBankDto.blockchainAddress || bank.blockchainAddress, id: Not(id) },
+          {
+            blockchainAddress:
+              updateBankDto.blockchainAddress || bank.blockchainAddress,
+            id: Not(id),
+          },
         ],
       });
 
       if (existingBank) {
-        throw new ConflictException('Bank with this name or blockchain address already exists');
+        throw new ConflictException(
+          'Bank with this name or blockchain address already exists',
+        );
       }
     }
 
     Object.assign(bank, updateBankDto);
     const updatedBank = await this.bankRepository.save(bank);
-    
+
     return this.mapToResponseDto(updatedBank);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, bankId: string): Promise<void> {
+    if (id !== bankId) {
+      throw new NotFoundException('Bank not found');
+    }
     const bank = await this.bankRepository.findOne({
       where: { id, isActive: true },
     });
@@ -120,4 +150,4 @@ export class BanksService {
       updatedAt: bank.updatedAt,
     };
   }
-} 
+}

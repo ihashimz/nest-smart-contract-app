@@ -1,10 +1,17 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { LoginDto, RegisterDto, AuthResponseDto } from './dto/login.dto';
+import { UserRole } from '../common/decorators/roles.decorator';
+import { AuthenticatedUser } from './authenticated-user';
 import { BanksService } from '../banks/banks.service';
 
 @Injectable()
@@ -22,7 +29,10 @@ export class AuthService {
       relations: ['bank'],
     });
 
-    if (user && await bcrypt.compare(password, user.password)) {
+    if (
+      user?.bank?.isActive &&
+      (await bcrypt.compare(password, user.password))
+    ) {
       const { password, ...result } = user;
       return result;
     }
@@ -31,7 +41,7 @@ export class AuthService {
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.validateUser(loginDto.email, loginDto.password);
-    
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -39,8 +49,8 @@ export class AuthService {
     // Update last login
     await this.userRepository.update(user.id, { lastLoginAt: new Date() });
 
-    const payload = { 
-      email: user.email, 
+    const payload = {
+      email: user.email,
       sub: user.id,
       roles: user.roles,
       bankId: user.bankId,
@@ -59,7 +69,16 @@ export class AuthService {
     };
   }
 
-  async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
+  async register(
+    registerDto: RegisterDto,
+    actor: AuthenticatedUser,
+  ): Promise<AuthResponseDto> {
+    if (!actor?.bankId || !actor.roles?.includes(UserRole.BANK_ADMIN)) {
+      throw new ForbiddenException(
+        'Only bank administrators can provision users',
+      );
+    }
+
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
       where: { email: registerDto.email },
@@ -70,7 +89,7 @@ export class AuthService {
     }
 
     // Verify bank exists
-    await this.banksService.findOne(registerDto.bankId);
+    await this.banksService.findOne(actor.bankId);
 
     // Hash password
     const saltRounds = 12;
@@ -78,15 +97,19 @@ export class AuthService {
 
     // Create user
     const user = this.userRepository.create({
-      ...registerDto,
+      email: registerDto.email,
+      firstName: registerDto.firstName,
+      lastName: registerDto.lastName,
+      bankId: actor.bankId,
+      roles: [UserRole.TRADER],
       password: hashedPassword,
     });
 
     const savedUser = await this.userRepository.save(user);
 
     // Generate JWT token
-    const payload = { 
-      email: savedUser.email, 
+    const payload = {
+      email: savedUser.email,
       sub: savedUser.id,
       roles: savedUser.roles,
       bankId: savedUser.bankId,
@@ -111,11 +134,11 @@ export class AuthService {
       relations: ['bank'],
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    if (!user?.bank?.isActive) {
+      throw new UnauthorizedException('User not found or bank inactive');
     }
 
     const { password, ...result } = user;
     return result;
   }
-} 
+}

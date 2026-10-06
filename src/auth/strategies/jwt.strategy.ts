@@ -16,18 +16,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
   async validate(payload: any): Promise<any> {
+    if (typeof payload.sub !== 'string' || !payload.sub) {
+      throw new UnauthorizedException('Invalid token subject');
+    }
     const user = await this.userRepository.findOne({
       where: { id: payload.sub, isActive: true },
       relations: ['bank'],
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found or inactive');
+    if (!user?.bank?.isActive) {
+      throw new UnauthorizedException('User or bank not found or inactive');
     }
 
     return {
@@ -38,4 +41,4 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       bank: user.bank,
     };
   }
-} 
+}

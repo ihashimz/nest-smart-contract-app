@@ -48,7 +48,11 @@ export class OptionTransfer {
   @JoinColumn({ name: 'toBankId' })
   toBank: Bank;
 
-  @Column({ type: 'enum', enum: TransferStatus, default: TransferStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: TransferStatus,
+    default: TransferStatus.PENDING,
+  })
   status: TransferStatus;
 
   @Column({ nullable: true })
@@ -57,8 +61,8 @@ export class OptionTransfer {
   @Column({ nullable: true })
   blockNumber: number; // Blockchain block number
 
-  @Column({ nullable: true })
-  gasUsed: number; // Gas used for the transaction
+  @Column({ type: 'bigint', nullable: true })
+  gasUsed: string; // Gas used for the transaction
 
   @Column({ nullable: true })
   gasPrice: string; // Gas price in wei
@@ -74,4 +78,4 @@ export class OptionTransfer {
 
   @UpdateDateColumn()
   updatedAt: Date;
-} 
+}

@@ -1,7 +1,22 @@
-import { Controller, Post, Body, UseGuards, Request, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto, AuthResponseDto } from './dto/login.dto';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, UserRole } from '../common/decorators/roles.decorator';
+import { AuthenticatedUser } from './authenticated-user';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
@@ -11,35 +26,50 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'User login' })
-  @ApiResponse({ 
-    status: HttpStatus.OK, 
+  @ApiResponse({
+    status: HttpStatus.OK,
     description: 'Login successful',
-    type: AuthResponseDto 
+    type: AuthResponseDto,
   })
-  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid credentials',
+  })
   async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(loginDto);
   }
 
   @Post('register')
-  @ApiOperation({ summary: 'User registration' })
-  @ApiResponse({ 
-    status: HttpStatus.CREATED, 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.BANK_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Provision a trader in the administrator’s bank' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
     description: 'Registration successful',
-    type: AuthResponseDto 
+    type: AuthResponseDto,
   })
-  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'User already exists' })
-  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
-    return this.authService.register(registerDto);
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'User already exists',
+  })
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Request() req: { user: AuthenticatedUser },
+  ): Promise<AuthResponseDto> {
+    return this.authService.register(registerDto, req.user);
   }
 
   @Post('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user profile' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Profile retrieved successfully' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Profile retrieved successfully',
+  })
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Unauthorized' })
   async getProfile(@Request() req: any): Promise<any> {
     return this.authService.getProfile(req.user.id);
   }
-} 
+}

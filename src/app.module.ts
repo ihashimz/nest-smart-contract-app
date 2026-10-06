@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard, seconds } from '@nestjs/throttler';
 
 import { AuthModule } from './auth/auth.module';
 import { OptionsModule } from './options/options.module';
@@ -10,14 +11,14 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { AuditModule } from './audit/audit.module';
 
 import { DatabaseConfig } from './config/database.config';
-import { AppConfig } from './config/app.config';
+import appConfig from './config/app.config';
 
 @Module({
   imports: [
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [AppConfig],
+      load: [appConfig],
       envFilePath: '.env',
     }),
 
@@ -29,7 +30,7 @@ import { AppConfig } from './config/app.config';
     // Rate limiting
     ThrottlerModule.forRoot([
       {
-        ttl: parseInt(process.env.RATE_LIMIT_TTL || '60'),
+        ttl: seconds(parseInt(process.env.RATE_LIMIT_TTL || '60', 10)),
         limit: parseInt(process.env.RATE_LIMIT_LIMIT || '100'),
       },
     ]),
@@ -41,5 +42,6 @@ import { AppConfig } from './config/app.config';
     BlockchainModule,
     AuditModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
-export class AppModule {} 
+export class AppModule {}

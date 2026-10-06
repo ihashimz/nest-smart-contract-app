@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 export interface TransactionResult {
   hash: string;
   blockNumber: number;
-  gasUsed: number;
+  gasUsed: string;
   gasPrice: string;
 }
 
@@ -21,6 +21,11 @@ export class BlockchainService {
   }
 
   private initializeProvider(): void {
+    if (
+      this.configService.get<string>('ENABLE_EXPERIMENTAL_TRANSFERS') !== 'true'
+    ) {
+      return;
+    }
     const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
     const privateKey = this.configService.get<string>('PRIVATE_KEY');
     const contractAddress = this.configService.get<string>('CONTRACT_ADDRESS');
@@ -33,7 +38,7 @@ export class BlockchainService {
     try {
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
       this.wallet = new ethers.Wallet(privateKey, this.provider);
-      
+
       // Basic ERC-721 ABI for option transfers
       const abi = [
         'function transferFrom(address from, address to, uint256 tokenId) external',
@@ -45,7 +50,7 @@ export class BlockchainService {
       this.contract = new ethers.Contract(contractAddress, abi, this.wallet);
       this.logger.log('Blockchain provider initialized successfully');
     } catch (error) {
-      this.logger.error('Failed to initialize blockchain provider', error);
+      this.logger.error('Failed to initialize blockchain provider');
     }
   }
 
@@ -54,8 +59,18 @@ export class BlockchainService {
     tokenId: string,
     toAddress: string,
   ): Promise<TransactionResult> {
+    if (
+      this.configService.get<string>('ENABLE_EXPERIMENTAL_TRANSFERS') !== 'true'
+    ) {
+      throw new Error('Experimental blockchain transfers are disabled');
+    }
+    if (!this.contract || !this.wallet) {
+      throw new Error('Blockchain integration is not configured');
+    }
     try {
-      this.logger.log(`Initiating transfer of token ${tokenId} to ${toAddress}`);
+      this.logger.log(
+        `Initiating transfer of token ${tokenId} to ${toAddress}`,
+      );
 
       // Validate addresses
       if (!ethers.isAddress(contractAddress)) {
@@ -93,13 +108,13 @@ export class BlockchainService {
 
       // Wait for confirmation
       const receipt = await tx.wait();
-      
+
       this.logger.log(`Transaction confirmed in block ${receipt.blockNumber}`);
 
       return {
         hash: tx.hash,
         blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed,
+        gasUsed: receipt.gasUsed.toString(),
         gasPrice: tx.gasPrice.toString(),
       };
     } catch (error) {
@@ -111,7 +126,7 @@ export class BlockchainService {
   async getTransactionStatus(txHash: string): Promise<any> {
     try {
       const receipt = await this.provider.getTransactionReceipt(txHash);
-      
+
       if (!receipt) {
         return { status: 'pending' };
       }
@@ -119,8 +134,8 @@ export class BlockchainService {
       return {
         status: receipt.status === 1 ? 'confirmed' : 'failed',
         blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed,
-        confirmations: receipt.confirmations,
+        gasUsed: receipt.gasUsed.toString(),
+        confirmations: await receipt.confirmations(),
       };
     } catch (error) {
       this.logger.error('Failed to get transaction status', error);
@@ -128,7 +143,10 @@ export class BlockchainService {
     }
   }
 
-  async getOptionOwner(contractAddress: string, tokenId: string): Promise<string> {
+  async getOptionOwner(
+    contractAddress: string,
+    tokenId: string,
+  ): Promise<string> {
     try {
       const optionContract = new ethers.Contract(
         contractAddress,
@@ -152,9 +170,9 @@ export class BlockchainService {
     try {
       const network = await this.provider.getNetwork();
       const blockNumber = await this.provider.getBlockNumber();
-      
+
       return {
-        chainId: network.chainId,
+        chainId: network.chainId.toString(),
         name: network.name,
         blockNumber,
       };
@@ -163,4 +181,4 @@ export class BlockchainService {
       throw new Error(`Failed to get network info: ${error.message}`);
     }
   }
-} 
+}

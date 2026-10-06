@@ -1,11 +1,24 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Option, OptionStatus } from './entities/option.entity';
-import { OptionTransfer, TransferStatus } from './entities/option-transfer.entity';
+import {
+  OptionTransfer,
+  TransferStatus,
+} from './entities/option-transfer.entity';
 import { CreateOptionDto } from './dto/create-option.dto';
-import { TransferOptionDto, TransferResponseDto } from './dto/transfer-option.dto';
-import { OptionResponseDto, OptionWithOwnerDto } from './dto/option-response.dto';
+import {
+  TransferOptionDto,
+  TransferResponseDto,
+} from './dto/transfer-option.dto';
+import {
+  OptionResponseDto,
+  OptionWithOwnerDto,
+} from './dto/option-response.dto';
 import { BanksService } from '../banks/banks.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 
@@ -21,9 +34,12 @@ export class OptionsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(createOptionDto: CreateOptionDto): Promise<OptionResponseDto> {
+  async create(
+    createOptionDto: CreateOptionDto,
+    bankId: string,
+  ): Promise<OptionResponseDto> {
     // Verify the bank exists
-    await this.banksService.findOne(createOptionDto.currentOwnerId);
+    await this.banksService.findOne(bankId);
 
     // Check if option with same blockchain address and token ID already exists
     const existingOption = await this.optionRepository.findOne({
@@ -34,32 +50,36 @@ export class OptionsService {
     });
 
     if (existingOption) {
-      throw new BadRequestException('Option with this blockchain address and token ID already exists');
+      throw new BadRequestException(
+        'Option with this blockchain address and token ID already exists',
+      );
     }
 
-    const option = this.optionRepository.create(createOptionDto);
+    const option = this.optionRepository.create({
+      ...createOptionDto,
+      currentOwnerId: bankId,
+      expirationDate: new Date(createOptionDto.expirationDate),
+    });
     const savedOption = await this.optionRepository.save(option);
-    
+
     return this.mapToResponseDto(savedOption);
   }
 
-  async findAll(bankId?: string): Promise<OptionWithOwnerDto[]> {
+  async findAll(bankId: string): Promise<OptionWithOwnerDto[]> {
     const query = this.optionRepository
       .createQueryBuilder('option')
       .leftJoinAndSelect('option.currentOwner', 'owner')
       .orderBy('option.createdAt', 'DESC');
 
-    if (bankId) {
-      query.where('option.currentOwnerId = :bankId', { bankId });
-    }
+    query.where('option.currentOwnerId = :bankId', { bankId });
 
     const options = await query.getMany();
-    return options.map(option => this.mapToWithOwnerDto(option));
+    return options.map((option) => this.mapToWithOwnerDto(option));
   }
 
-  async findOne(id: string): Promise<OptionWithOwnerDto> {
+  async findOne(id: string, bankId: string): Promise<OptionWithOwnerDto> {
     const option = await this.optionRepository.findOne({
-      where: { id },
+      where: { id, currentOwnerId: bankId },
       relations: ['currentOwner'],
     });
 
@@ -81,7 +101,9 @@ export class OptionsService {
     });
 
     if (!option) {
-      throw new NotFoundException('Option not found or not owned by the specified bank');
+      throw new NotFoundException(
+        'Option not found or not owned by the specified bank',
+      );
     }
 
     if (option.status !== OptionStatus.ACTIVE) {
@@ -134,14 +156,18 @@ export class OptionsService {
     }
   }
 
-  async getTransferHistory(optionId: string): Promise<TransferResponseDto[]> {
+  async getTransferHistory(
+    optionId: string,
+    bankId: string,
+  ): Promise<TransferResponseDto[]> {
+    await this.findOne(optionId, bankId);
     const transfers = await this.transferRepository.find({
       where: { optionId },
       relations: ['fromBank', 'toBank'],
       order: { createdAt: 'DESC' },
     });
 
-    return transfers.map(transfer => this.mapToTransferResponseDto(transfer));
+    return transfers.map((transfer) => this.mapToTransferResponseDto(transfer));
   }
 
   private mapToResponseDto(option: Option): OptionResponseDto {
@@ -176,7 +202,9 @@ export class OptionsService {
     };
   }
 
-  private mapToTransferResponseDto(transfer: OptionTransfer): TransferResponseDto {
+  private mapToTransferResponseDto(
+    transfer: OptionTransfer,
+  ): TransferResponseDto {
     return {
       transferId: transfer.id,
       optionId: transfer.optionId,
@@ -187,4 +215,4 @@ export class OptionsService {
       createdAt: transfer.createdAt,
     };
   }
-} 
+}

@@ -1,19 +1,20 @@
-import { 
-  IsString, 
-  IsNotEmpty, 
-  IsNumber, 
-  IsDateString, 
-  IsEnum, 
-  IsOptional, 
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsDateString,
+  IsEnum,
+  IsOptional,
   IsObject,
   Min,
-  IsUUID 
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OptionType } from '../entities/option.entity';
 
 export class CreateOptionDto {
-  @ApiProperty({ description: 'Option symbol (e.g., AAPL-CALL-150-2024-12-15)' })
+  @ApiProperty({
+    description: 'Option symbol (e.g., AAPL-CALL-150-2024-12-15)',
+  })
   @IsString()
   @IsNotEmpty()
   symbol: string;
@@ -56,12 +57,8 @@ export class CreateOptionDto {
   @IsNotEmpty()
   tokenId: string;
 
-  @ApiProperty({ description: 'ID of the bank that owns this option' })
-  @IsUUID()
-  currentOwnerId: string;
-
   @ApiPropertyOptional({ description: 'Additional metadata' })
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
-} 
+}

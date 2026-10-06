@@ -12,10 +12,15 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       url: this.configService.get<string>('DATABASE_URL'),
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
       migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-      synchronize: this.configService.get<string>('NODE_ENV') === 'development',
+      synchronize: false,
       logging: this.configService.get<string>('NODE_ENV') === 'development',
-      ssl: this.configService.get<string>('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+      ssl:
+        this.configService.get<string>('NODE_ENV') === 'production'
+          ? { rejectUnauthorized: true }
+          : false,
+      uuidExtension: 'pgcrypto',
+      installExtensions: false,
       autoLoadEntities: true,
     };
   }
-} 
+}
