@@ -62,7 +62,7 @@ npm run migration:generate -- src/migrations/DescribeChange
 npm run migration:revert
 ```
 
-Regression tests cover real HTTP JWT/role authorization with a repository fake, DTO/service tenant boundaries, inactive-bank sessions, explicit administrator bootstrap, the CLI DataSource/schema statements, and disabled blockchain writes. They do not exercise a live Ethereum network. The CI workflow runs the build and tests, plus migration run/revert/run and bootstrap against disposable PostgreSQL 16. No local database is required for the regression suite; HTTP tests bind a temporary loopback port.
+Regression tests cover real HTTP JWT/role authorization with a repository fake, DTO/service tenant boundaries, inactive-bank sessions, explicit administrator bootstrap, the CLI DataSource/schema statements, and disabled blockchain writes. They do not exercise a live Ethereum network. A disposable PostgreSQL 16 database is required to exercise migration run/revert/run and bootstrap. No local database is required for the regression suite; HTTP tests bind a temporary loopback port.
 
 ## Experimental blockchain boundary
 
